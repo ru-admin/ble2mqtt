@@ -8,7 +8,6 @@ on:
 env:
   SDK_URL: https://downloads.openwrt.org/releases/23.05.6/targets/imx/cortexa7/openwrt-sdk-23.05.6-imx-cortexa7_gcc-12.3.0_musl_eabi.Linux-x86_64.tar.xz
   REPO_URL: https://github.com/ru-admin/ble2mqtt.git
-  PACKAGE_ARCH: arm_cortex-a7_neon-vfpv4
 
 jobs:
   build-ipk:
@@ -53,14 +52,14 @@ jobs:
       - name: Prepare package feeds
         run: |
           cd sdk
-          if [ ! -e package/feeds/packages/lang/python/python3-package.mk ]; then
+          if [ ! -e package/feeds/packages/python-ble2mqtt ]; then
             ./scripts/feeds update -a
             ./scripts/feeds install -a
           fi
 
       - name: Install package into feed
         run: |
-          TARGET=sdk/package/feeds/packages/lang/python/python-ble2mqtt
+          TARGET=sdk/feeds/packages/lang/python/python-ble2mqtt
           rm -rf "$TARGET"
           cp -r openwrt/lang/python/python-ble2mqtt "$TARGET"
           ls -la "$TARGET" "$TARGET/files"
@@ -69,7 +68,7 @@ jobs:
         run: |
           cd sdk
           mkdir -p "$GITHUB_WORKSPACE/artifacts"
-          make package/feeds/packages/python-ble2mqtt/compile V=s \
+          make -j$(nproc) package/feeds/packages/python-ble2mqtt/compile V=s \
             PKG_VERSION="${{ steps.ver.outputs.tag }}" \
             PKG_SOURCE_VERSION="${{ steps.ver.outputs.commit }}" 2>&1 \
             | tee "$GITHUB_WORKSPACE/artifacts/build.log"
@@ -77,8 +76,7 @@ jobs:
       - name: Collect artifacts
         run: |
           set -e
-          ARCH_DIR="sdk/bin/packages/$PACKAGE_ARCH/packages"
-          cp "$ARCH_DIR"/python3-ble2mqtt*.ipk artifacts/
+          find sdk/bin/packages -name 'python3-ble2mqtt*.ipk' -exec cp {} artifacts/ \;
           ls -la artifacts/
 
       - name: Attach to release
