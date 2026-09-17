@@ -1,0 +1,95 @@
+name: Build OpenWrt ipk
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+env:
+  SDK_URL: https://downloads.openwrt.org/releases/23.05.6/targets/imx/cortexa7/openwrt-sdk-23.05.6-imx-cortexa7_gcc-12.3.0_musl_eabi.Linux-x86_64.tar.xz
+  REPO_URL: https://github.com/ru-admin/ble2mqtt.git
+  PACKAGE_ARCH: arm_cortex-a7_neon-vfpv4
+
+jobs:
+  build-ipk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref }}
+
+      - name: Resolve version and commit
+        id: ver
+        run: |
+          set -e
+          TAG="${{ github.event.release.tag_name }}"
+          if [ -n "$TAG" ]; then
+            COMMIT="$(git ls-remote "$REPO_URL" "refs/tags/$TAG" "refs/tags/$TAG^{}" | awk '$2 ~ /\^{}$/ {print $1}')"
+            if [ -z "$COMMIT" ]; then
+              COMMIT="$(git ls-remote "$REPO_URL" "refs/tags/$TAG" | head -n1 | awk '{print $1}')"
+            fi
+            if [ -z "$COMMIT" ]; then
+              echo "::error::Tag $TAG not found in $REPO_URL"
+              exit 1
+            fi
+          else
+            TAG="$(sed -n "s/^VERSION = \(['\"]\)\(.*\)\1$/\2/p" ble2mqtt/__version__.py)"
+            COMMIT="${{ github.sha }}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "commit=$COMMIT" >> "$GITHUB_OUTPUT"
+          echo "Building ble2mqtt $TAG from commit $COMMIT"
+
+      - name: Download and extract OpenWrt SDK
+        run: |
+          curl -fSsL -o sdk.tar.xz "$SDK_URL"
+          tar -xJf sdk.tar.xz
+          mv openwrt-sdk-* sdk
+          ls sdk | head
+
+      - name: Prepare package feeds
+        run: |
+          cd sdk
+          if [ ! -e package/feeds/packages/lang/python/python3-package.mk ]; then
+            ./scripts/feeds update -a
+            ./scripts/feeds install -a
+          fi
+
+      - name: Install package into feed
+        run: |
+          TARGET=sdk/package/feeds/packages/lang/python/python-ble2mqtt
+          rm -rf "$TARGET"
+          cp -r openwrt/lang/python/python-ble2mqtt "$TARGET"
+          ls -la "$TARGET" "$TARGET/files"
+
+      - name: Build ipk
+        run: |
+          cd sdk
+          mkdir -p "$GITHUB_WORKSPACE/artifacts"
+          make package/feeds/packages/python-ble2mqtt/compile V=s \
+            PKG_VERSION="${{ steps.ver.outputs.tag }}" \
+            PKG_SOURCE_VERSION="${{ steps.ver.outputs.commit }}" 2>&1 \
+            | tee "$GITHUB_WORKSPACE/artifacts/build.log"
+
+      - name: Collect artifacts
+        run: |
+          set -e
+          ARCH_DIR="sdk/bin/packages/$PACKAGE_ARCH/packages"
+          cp "$ARCH_DIR"/python3-ble2mqtt*.ipk artifacts/
+          ls -la artifacts/
+
+      - name: Attach to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+
+      - name: Upload artifact
+        if: github.event_name != 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ble2mqtt-ipk
+          path: artifacts/
