@@ -63,10 +63,10 @@ jobs:
           rm -rf "$TARGET"
           cp -r openwrt/lang/python/python-ble2mqtt "$TARGET"
           awk -v v="${{ steps.ver.outputs.tag }}" \
-            'sub(/^PKG_VERSION:=.*/, "PKG_VERSION:=" v)' "$TARGET/Makefile" > "$TARGET/Makefile.tmp"
+            '{sub(/^PKG_VERSION:=.*/,"PKG_VERSION:=" v)} 1' "$TARGET/Makefile" > "$TARGET/Makefile.tmp"
           mv "$TARGET/Makefile.tmp" "$TARGET/Makefile"
           awk -v v="${{ steps.ver.outputs.commit }}" \
-            'sub(/^PKG_SOURCE_VERSION:=.*/, "PKG_SOURCE_VERSION:=" v)' "$TARGET/Makefile" > "$TARGET/Makefile.tmp"
+            '{sub(/^PKG_SOURCE_VERSION:=.*/,"PKG_SOURCE_VERSION:=" v)} 1' "$TARGET/Makefile" > "$TARGET/Makefile.tmp"
           mv "$TARGET/Makefile.tmp" "$TARGET/Makefile"
           ls -la "$TARGET" "$TARGET/files"
           grep -E '^(PKG_VERSION|PKG_SOURCE_VERSION)' "$TARGET/Makefile"
