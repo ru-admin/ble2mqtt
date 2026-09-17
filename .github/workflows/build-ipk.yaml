@@ -62,7 +62,14 @@ jobs:
           TARGET=sdk/feeds/packages/lang/python/python-ble2mqtt
           rm -rf "$TARGET"
           cp -r openwrt/lang/python/python-ble2mqtt "$TARGET"
+          awk -v v="${{ steps.ver.outputs.tag }}" \
+            'sub(/^PKG_VERSION:=.*/, "PKG_VERSION:=" v)' "$TARGET/Makefile" > "$TARGET/Makefile.tmp"
+          mv "$TARGET/Makefile.tmp" "$TARGET/Makefile"
+          awk -v v="${{ steps.ver.outputs.commit }}" \
+            'sub(/^PKG_SOURCE_VERSION:=.*/, "PKG_SOURCE_VERSION:=" v)' "$TARGET/Makefile" > "$TARGET/Makefile.tmp"
+          mv "$TARGET/Makefile.tmp" "$TARGET/Makefile"
           ls -la "$TARGET" "$TARGET/files"
+          grep -E '^(PKG_VERSION|PKG_SOURCE_VERSION)' "$TARGET/Makefile"
 
       - name: Configure SDK
         run: |
@@ -74,9 +81,7 @@ jobs:
           cd sdk
           set -o pipefail
           mkdir -p "$GITHUB_WORKSPACE/artifacts"
-          make -j$(nproc) package/feeds/packages/python-ble2mqtt/compile V=s \
-            PKG_VERSION="${{ steps.ver.outputs.tag }}" \
-            PKG_SOURCE_VERSION="${{ steps.ver.outputs.commit }}" 2>&1 \
+          make -j$(nproc) package/feeds/packages/python-ble2mqtt/compile V=s 2>&1 \
             | tee "$GITHUB_WORKSPACE/artifacts/build.log"
 
       - name: Collect artifacts
