@@ -26,10 +26,7 @@ jobs:
           set -e
           TAG="${{ github.event.release.tag_name }}"
           if [ -n "$TAG" ]; then
-            COMMIT="$(git ls-remote "$REPO_URL" "refs/tags/$TAG" "refs/tags/$TAG^{}" | awk '$2 ~ /\^{}$/ {print $1}')"
-            if [ -z "$COMMIT" ]; then
-              COMMIT="$(git ls-remote "$REPO_URL" "refs/tags/$TAG" | head -n1 | awk '{print $1}')"
-            fi
+            COMMIT="$(git ls-remote "$REPO_URL" "refs/tags/$TAG" "refs/tags/$TAG^{}" | tail -n1 | cut -f1)"
             if [ -z "$COMMIT" ]; then
               echo "::error::Tag $TAG not found in $REPO_URL"
               exit 1
