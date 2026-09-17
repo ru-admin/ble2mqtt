@@ -64,9 +64,15 @@ jobs:
           cp -r openwrt/lang/python/python-ble2mqtt "$TARGET"
           ls -la "$TARGET" "$TARGET/files"
 
+      - name: Configure SDK
+        run: |
+          cd sdk
+          make defconfig
+
       - name: Build ipk
         run: |
           cd sdk
+          set -o pipefail
           mkdir -p "$GITHUB_WORKSPACE/artifacts"
           make -j$(nproc) package/feeds/packages/python-ble2mqtt/compile V=s \
             PKG_VERSION="${{ steps.ver.outputs.tag }}" \
@@ -74,19 +80,20 @@ jobs:
             | tee "$GITHUB_WORKSPACE/artifacts/build.log"
 
       - name: Collect artifacts
+        if: always()
         run: |
-          set -e
-          find sdk/bin/packages -name 'python3-ble2mqtt*.ipk' -exec cp {} artifacts/ \;
-          ls -la artifacts/
+          mkdir -p artifacts
+          find sdk/bin/packages -name 'python3-ble2mqtt*.ipk' -exec cp {} artifacts/ \; || true
+          ls -la artifacts/ || true
 
       - name: Attach to release
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' && success()
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*
+          files: artifacts/*.ipk
 
       - name: Upload artifact
-        if: github.event_name != 'release'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ble2mqtt-ipk
