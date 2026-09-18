@@ -112,6 +112,7 @@ async def amain(config):
         mqtt_config_prefix=config['mqtt_config_prefix'],
         hci_adapter=config['hci_adapter'],
         legacy_color_mode=config['legacy_color_mode'],
+        homeassistant=config['homeassistant'],
     )
 
     loop.set_exception_handler(
@@ -164,6 +165,7 @@ def main():
         'hci_adapter': 'hci0',
         'legacy_color_mode': False,
         'availability_timeout': 180,
+        'homeassistant': True,
         **config,
     }
 

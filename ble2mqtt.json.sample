@@ -4,6 +4,7 @@
     "mqtt_password": "",
     "legacy_color_mode": false,
     "availability_timeout": 180,
+    "homeassistant": true,
     "devices": [
         {
             "address": "11:22:33:aa:cc:aa",

@@ -25,7 +25,8 @@ FAILURE_LIMIT = 5
 
 class DeviceManager:
     def __init__(self, device, *, hci_adapter, mqtt_client, base_topic,
-                 config_prefix, global_availability_topic, legacy_color_mode):
+                 config_prefix, global_availability_topic, legacy_color_mode,
+                 homeassistant=True):
         self.device: Device = device
         self._hci_adapter = hci_adapter
         self._mqtt_client = mqtt_client
@@ -33,11 +34,16 @@ class DeviceManager:
         self._config_prefix = config_prefix
         self._global_availability_topic = global_availability_topic
         self._legacy_color_mode = legacy_color_mode
+        self._homeassistant = homeassistant
         self.manage_task = None
         self.last_connection_successful = True
 
         self._scanned_device: ty.Union[BLEDevice, None] = None
         self._scanned_device_set = aio.Event()
+
+        if not self._homeassistant:
+            # skip Home Assistant discovery publishing entirely
+            self.device.config_sent = True
 
     def set_scanned_device(self, ble_device: BLEDevice):
         self._scanned_device = ble_device
@@ -93,6 +99,8 @@ class DeviceManager:
         return f'{self._config_prefix}{self.device.dev_id}'
 
     async def send_device_config(self):
+        if not self._homeassistant:
+            return
         device = self.device
         device_info = {
             'identifiers': [
