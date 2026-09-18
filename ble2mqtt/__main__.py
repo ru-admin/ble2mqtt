@@ -143,13 +143,13 @@ async def amain(config):
 
 def main():
     os.environ.setdefault('BLE2MQTT_CONFIG', '/etc/ble2mqtt.json')
+    config_path = os.environ['BLE2MQTT_CONFIG']
     config = {}
-    if os.path.exists(os.environ['BLE2MQTT_CONFIG']):
-        try:
-            with open(os.environ['BLE2MQTT_CONFIG'], 'r') as f:
-                config = json.load(f)
-        except FileNotFoundError:
-            pass
+    try:
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+    except (OSError, ValueError) as exc:
+        _LOGGER.warning('Failed to load config %s: %s', config_path, exc)
 
     config = {
         'mqtt_host': 'localhost',
@@ -173,6 +173,13 @@ def main():
         VERSION,
         get_bleak_version(),
         config["hci_adapter"]
+    )
+    _LOGGER.info(
+        'Config %s: MQTT %s:%s, base topic %s',
+        config_path,
+        config['mqtt_host'],
+        config['mqtt_port'],
+        config['base_topic'],
     )
 
     try:
