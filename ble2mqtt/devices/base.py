@@ -2,6 +2,7 @@ import abc
 import asyncio as aio
 import json
 import logging
+import time
 import typing as ty
 import uuid
 from collections import defaultdict, namedtuple
@@ -198,6 +199,10 @@ class Device(BaseDevice, abc.ABC):
     # secs to sleep if not connected or no data in passive mode
     NOT_READY_SLEEP_INTERVAL = 5
 
+    # after this timeout without advertisements a passive device
+    # is marked as offline and its stale state is not republished
+    DEFAULT_AVAILABILITY_TIMEOUT = 180
+
     def __init__(self, mac, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.message_queue: aio.Queue = aio.Queue(**get_loop_param(self._loop))
@@ -205,6 +210,12 @@ class Device(BaseDevice, abc.ABC):
         self.passive_sleep_interval = int(
             kwargs.pop('interval', self.DEFAULT_PASSIVE_SLEEP_INTERVAL),
         )
+        self.availability_timeout = int(kwargs.pop(
+            'availability_timeout',
+            self.DEFAULT_AVAILABILITY_TIMEOUT,
+        ))
+        self._last_seen = None
+        self._offline_sent = False
         self._suggested_area = kwargs.pop('suggested_area', None)
         self.friendly_name = kwargs.pop('friendly_name', None)
         self._model = None
@@ -227,6 +238,16 @@ class Device(BaseDevice, abc.ABC):
 
     def set_advertisement_seen(self):
         self._advertisement_seen.set()
+
+    def mark_seen(self):
+        """Remember the moment the device was last discovered by scan."""
+        self._last_seen = time.monotonic()
+
+    def _availability_expired(self):
+        return (
+            self._last_seen is not None
+            and time.monotonic() - self._last_seen > self.availability_timeout
+        )
 
     def _get_topic(self, topic):
         return '/'.join(filter(None, (self.unique_id, topic)))
@@ -575,14 +596,29 @@ class Sensor(Device, abc.ABC):
 
             await aio.sleep(self.ACTIVE_SLEEP_INTERVAL)
 
-    async def handle_passive(self, publish_topic, send_config, *args, **kwargs):
+    async def handle_passive(self, publish_topic, send_config, send_availability,
+                             *args, **kwargs):
         while True:
             if not self._state:
                 await aio.sleep(self.NOT_READY_SLEEP_INTERVAL)
                 continue
 
+            if self._availability_expired():
+                # the device has not been seen for a while:
+                # stop republishing the stale state, notify offline once
+                if not self._offline_sent:
+                    _LOGGER.warning(
+                        f'[{self}] no advertisement for '
+                        f'{self.availability_timeout}s, marked offline',
+                    )
+                    await send_availability(False)
+                    self._offline_sent = True
+                await aio.sleep(self.passive_sleep_interval)
+                continue
+
             await self.update_device_data(send_config)
             await self.do_passive_loop(publish_topic)
+            self._offline_sent = False
             await aio.sleep(self.passive_sleep_interval)
 
     async def handle(self, *args, **kwargs):

@@ -186,6 +186,7 @@ class Ble2Mqtt:
                     if device.name:
                         reg_device._model = device.name
                     reg_device.handle_advert(device, advertisement_data)
+                    reg_device.mark_seen()
                 else:
                     _LOGGER.debug(
                         f'active device seen: {reg_device} '

@@ -105,6 +105,27 @@ To use connection to the device provide `"passive": false` parameter.
 - Govee temperature/humidity sensors (govee_ht)
 - Any device as presence tracker
 
+### Availability
+
+Every device publishes its state to `<base_topic>/<device_id>` and its online
+status to `<base_topic>/<device_id>/availability` (`online`/`offline`).
+
+For **passive** devices online status is tracked by received advertisements.
+If a device is not seen for `availability_timeout` seconds (default `180`,
+configurable globally and per device), it is marked `offline` once and its
+stale state is not republished anymore. The very next advertisement brings the
+device back `online` and resumes publishing. Active devices are marked
+`offline` when repeated connections fail or on service shutdown.
+
+`<base_topic>/availability` is the global status of the whole service and is
+published retained with an MQTT Last Will so that Home Assistant (which uses
+`availability_mode: all`) marks entities unavailable when the service or the
+MQTT connection goes down.
+
+Device state and per-device `availability` messages are sent **without** the
+retain flag; only Home Assistant discovery (`homeassistant/.../config`) and the
+global availability topic are retained by design.
+
 ## Manual pairing in Linux
 
 Some devices (e.g. Ensto heaters) require paired connection to work with it. 

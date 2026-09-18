@@ -126,6 +126,10 @@ async def amain(config):
         except (ValueError, IndexError):
             continue
         klass = registered_device_types[typ]
+        device.setdefault(
+            'availability_timeout',
+            config['availability_timeout'],
+        )
         service.register(
             klass,
             mac=mac,
@@ -159,6 +163,7 @@ def main():
         'log_level': 'INFO',
         'hci_adapter': 'hci0',
         'legacy_color_mode': False,
+        'availability_timeout': 180,
         **config,
     }
 

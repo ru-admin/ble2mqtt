@@ -476,6 +476,7 @@ class DeviceManager:
                         device.handle(
                             self.publish_topic_with_availability,
                             send_config=self.send_device_config,
+                            send_availability=self.send_availability,
                         ),
                     ]
                     will_handle_messages = bool(device.subscribed_topics)

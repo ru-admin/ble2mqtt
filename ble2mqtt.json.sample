@@ -3,6 +3,7 @@
     "mqtt_user": "",
     "mqtt_password": "",
     "legacy_color_mode": false,
+    "availability_timeout": 180,
     "devices": [
         {
             "address": "11:22:33:aa:cc:aa",
@@ -51,7 +52,8 @@
         },
         {
             "address": "11:22:33:aa:bb:ff",
-            "type": "xiaomilywsd_atc"
+            "type": "xiaomilywsd_atc",
+            "availability_timeout": 180
         }
     ]
 }
