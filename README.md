@@ -117,7 +117,7 @@ stale state is not republished anymore. The very next advertisement brings the
 device back `online` and resumes publishing. Active devices are marked
 `offline` when repeated connections fail or on service shutdown.
 
-`<base_topic>/availability` is the global status of the whole service and is
+`<base_topic>/bridge/state` is the global status of the whole service and is
 published retained with an MQTT Last Will so that Home Assistant (which uses
 `availability_mode: all`) marks entities unavailable when the service or the
 MQTT connection goes down.
