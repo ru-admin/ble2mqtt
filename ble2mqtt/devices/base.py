@@ -214,7 +214,7 @@ class Device(BaseDevice, abc.ABC):
             'availability_timeout',
             self.DEFAULT_AVAILABILITY_TIMEOUT,
         ))
-        self._last_seen = None
+        self._last_seen = time.monotonic()
         self._offline_sent = False
         self._suggested_area = kwargs.pop('suggested_area', None)
         self.friendly_name = kwargs.pop('friendly_name', None)
@@ -245,8 +245,7 @@ class Device(BaseDevice, abc.ABC):
 
     def _availability_expired(self):
         return (
-            self._last_seen is not None
-            and time.monotonic() - self._last_seen > self.availability_timeout
+            time.monotonic() - self._last_seen > self.availability_timeout
         )
 
     def _get_topic(self, topic):
@@ -599,10 +598,6 @@ class Sensor(Device, abc.ABC):
     async def handle_passive(self, publish_topic, send_config, send_availability,
                              *args, **kwargs):
         while True:
-            if not self._state:
-                await aio.sleep(self.NOT_READY_SLEEP_INTERVAL)
-                continue
-
             if self._availability_expired():
                 # the device has not been seen for a while:
                 # stop republishing the stale state, notify offline once
@@ -614,6 +609,10 @@ class Sensor(Device, abc.ABC):
                     await send_availability(False)
                     self._offline_sent = True
                 await aio.sleep(self.passive_sleep_interval)
+                continue
+
+            if not self._state:
+                await aio.sleep(self.NOT_READY_SLEEP_INTERVAL)
                 continue
 
             await self.update_device_data(send_config)

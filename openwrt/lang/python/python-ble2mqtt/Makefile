@@ -7,7 +7,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=python-ble2mqtt
-PKG_VERSION:=0.2.6
+PKG_VERSION:=0.2.7
 PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
